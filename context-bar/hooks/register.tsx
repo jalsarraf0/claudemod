@@ -12,6 +12,8 @@ const mode = atom({ ...ref, key: 'mode' } as const, 'auto')
 const theme = atom({ ...ref, key: 'theme' } as const, DEFAULT_THEME)
 
 const GLYPH = { used: '█', buffer: '▒', free: '░', deferred: ' ' } as const
+// iOS fonts shimmer on ░ and lack some Unicode; mobile uses plain solid glyphs.
+const MOBILE_GLYPH = { used: '█', buffer: '▒', free: '·', deferred: ' ' } as const
 
 async function refresh($: any) {
   try {
@@ -99,26 +101,32 @@ export const register: Register = on => {
     const columns = e.viewport?.columns ?? 80
     const mobile = isMobile(await read($, mode), columns)
     const hot = snap.percent >= 85
+    const warm = snap.percent >= 70
+    const level = hot ? 'error' : warm ? 'warning' : t.accent
+    const glyph = mobile ? MOBILE_GLYPH : GLYPH
     const pct = `${Math.round(snap.percent)}%`
     const tokens = `${compact(snap.total)}/${compact(snap.max)}`
-    const head = mobile ? '◢ ' : `◢ CONTEXT ${t.name} `
-    const tail = mobile ? ` ${pct}` : ` ${pct} ${tokens} ${e.props.isWorking ? '◉' : '◌'}`
-    const width = Math.max(8, columns - head.length - tail.length - 4)
+    // Mobile leads with the number: it is the only thing read at a glance on a phone.
+    const head = mobile ? `${pct.padStart(4)} ` : `◢ CONTEXT ${t.name} `
+    const tail = mobile
+      ? columns >= 40 ? ` ${compact(snap.total)}` : ''
+      : ` ${pct} ${tokens} ${e.props.isWorking ? '◉' : '◌'}`
+    const width = Math.max(8, columns - head.length - tail.length - 3)
     const cells = cellsFor(snap.segments, snap.max, width)
 
     return (
       <Box>
-        <Text color={t.accent} bold>{head}</Text>
-        <Text color={t.deep}>╞</Text>
+        <Text color={mobile ? level : t.accent} bold>{head}</Text>
+        <Text color={t.deep}>{mobile ? '▕' : '╞'}</Text>
         {snap.segments.map((s, i) =>
           cells[i] > 0 ? (
             <Text key={s.name} color={s.color} dimColor={s.kind === 'free'}>
-              {GLYPH[s.kind].repeat(cells[i])}
+              {glyph[s.kind].repeat(cells[i])}
             </Text>
           ) : null,
         )}
-        <Text color={t.deep}>╡</Text>
-        <Text color={hot ? 'error' : t.accent} bold>{tail}</Text>
+        <Text color={t.deep}>{mobile ? '▏' : '╡'}</Text>
+        <Text color={level} bold>{tail}</Text>
       </Box>
     )
   })
