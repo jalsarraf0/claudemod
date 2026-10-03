@@ -89,87 +89,36 @@ export const register: Register = on => {
     return result
   })
 
-  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+  // The hint line under the prompt is the bottom-most row, so the bar lives there in both modes.
+  on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
     const snap = await read($, snapshot)
-    if (e.props.hasSurvey || !(await read($, isOn)) || !snap) return next(e)
+    if (!(await read($, isOn)) || !snap) return next(e)
 
     const { Box, Text } = $.ui.resolve(e)
     const t = await read($, theme)
-    const mobile = isMobile(await read($, mode), e.props.bodyColumns)
-    const width = Math.max(10, e.props.bodyColumns - 4)
-    const cells = cellsFor(snap.segments, snap.max, width)
+    const columns = e.viewport?.columns ?? 80
+    const mobile = isMobile(await read($, mode), columns)
     const hot = snap.percent >= 85
-    const used = snap.segments.filter(s => s.kind === 'used')
-    const status = e.props.isWorking ? '◉ working' : '◌ idle'
-
-    if (mobile) {
-      const w = Math.max(10, e.props.bodyColumns - 2)
-      const mc = cellsFor(snap.segments, snap.max, w)
-      const top = [...used].sort((a, b) => b.tokens - a.tokens).slice(0, 3)
-
-      return (
-        <Box flexDirection="column">
-          <Box>
-            <Text color={t.accent} bold>◢ CTX </Text>
-            <Text color={hot ? 'error' : t.accent} bold>{Math.round(snap.percent)}%</Text>
-            <Text dimColor> {compact(snap.total)}/{compact(snap.max)} {e.props.isWorking ? '◉' : '◌'}</Text>
-          </Box>
-          <Box>
-            {snap.segments.map((s, i) =>
-              mc[i] > 0 ? (
-                <Text key={s.name} color={s.color} dimColor={s.kind === 'free'}>
-                  {GLYPH[s.kind].repeat(mc[i])}
-                </Text>
-              ) : null,
-            )}
-          </Box>
-          <Box>
-            {top.map(s => (
-              <Text key={s.name} color={s.color}>
-                ■<Text dimColor>{shortName(s.name)} {compact(s.tokens)} </Text>
-              </Text>
-            ))}
-          </Box>
-        </Box>
-      )
-    }
+    const pct = `${Math.round(snap.percent)}%`
+    const tokens = `${compact(snap.total)}/${compact(snap.max)}`
+    const head = mobile ? '◢ ' : `◢ CONTEXT ${t.name} `
+    const tail = mobile ? ` ${pct}` : ` ${pct} ${tokens} ${e.props.isWorking ? '◉' : '◌'}`
+    const width = Math.max(8, columns - head.length - tail.length - 4)
+    const cells = cellsFor(snap.segments, snap.max, width)
 
     return (
-      <Box flexDirection="column" paddingX={1}>
-        <Box>
-          <Text color={t.deep}>▐</Text>
-          <Text color={t.accent} bold>
-            {' '}CONTEXT{' '}
-          </Text>
-          <Text color={t.deep}>▌</Text>
-          <Text color={t.soft}> {t.name}</Text>
-          <Text dimColor> · {snap.model} · {status} · </Text>
-          <Text color={hot ? 'error' : t.accent} bold>
-            {Math.round(snap.percent)}%
-          </Text>
-          <Text dimColor>
-            {' '}
-            {compact(snap.total)}/{compact(snap.max)}
-          </Text>
-        </Box>
-        <Box>
-          <Text color={t.deep}>╞</Text>
-          {snap.segments.map((s, i) =>
-            cells[i] > 0 ? (
-              <Text key={s.name} color={s.color} dimColor={s.kind === 'free'}>
-                {GLYPH[s.kind].repeat(cells[i])}
-              </Text>
-            ) : null,
-          )}
-          <Text color={t.deep}>╡</Text>
-        </Box>
-        <Box>
-          {used.map(s => (
-            <Text key={s.name} color={s.color}>
-              ■ <Text dimColor>{s.name} {compact(s.tokens)}  </Text>
+      <Box>
+        <Text color={t.accent} bold>{head}</Text>
+        <Text color={t.deep}>╞</Text>
+        {snap.segments.map((s, i) =>
+          cells[i] > 0 ? (
+            <Text key={s.name} color={s.color} dimColor={s.kind === 'free'}>
+              {GLYPH[s.kind].repeat(cells[i])}
             </Text>
-          ))}
-        </Box>
+          ) : null,
+        )}
+        <Text color={t.deep}>╡</Text>
+        <Text color={hot ? 'error' : t.accent} bold>{tail}</Text>
       </Box>
     )
   })
