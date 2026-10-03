@@ -1,4 +1,4 @@
-import type { Segment } from '../types'
+import type { Mode, Segment } from '../types'
 
 export const compact = (n: number) =>
   n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}k` : `${n}`
@@ -21,4 +21,34 @@ export const cellsFor = (segments: Segment[], max: number, width: number): numbe
   })
 
   return cells
+}
+
+// Termius on a phone is typically 36-50 columns portrait; auto switches below this.
+export const MOBILE_MAX_COLUMNS = 56
+
+export const isMobile = (mode: Mode, columns: number) =>
+  mode === 'mobile' || (mode === 'auto' && columns <= MOBILE_MAX_COLUMNS)
+
+// One-letter-ish tags so the legend fits a phone-width row.
+export const shortName = (name: string) => {
+  const known: Record<string, string> = {
+    'System prompt': 'Sys',
+    'System tools': 'Tools',
+    'MCP tools': 'MCP',
+    'Custom agents': 'Agents',
+    'Memory files': 'Mem',
+    Skills: 'Skills',
+    Messages: 'Msgs',
+  }
+
+  return known[name] ?? name.slice(0, 5)
+}
+
+export const nextMode = (arg: string, current: Mode): Mode | null => {
+  const word = arg.trim().toLowerCase()
+  if (word === 'mobile') return current === 'mobile' ? 'auto' : 'mobile'
+  if (word === 'desktop') return 'desktop'
+  if (word === 'auto') return 'auto'
+
+  return null
 }

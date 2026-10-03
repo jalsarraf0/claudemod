@@ -2,12 +2,13 @@ import { atom, read, update } from 'claude-code'
 import type { Register } from 'claude-code'
 
 import type { Segment, Snapshot } from '../types'
-import { cellsFor, compact } from './layout'
+import { cellsFor, compact, isMobile, nextMode, shortName } from './layout'
 import { DEFAULT_THEME, themeFromOsRelease } from './theme'
 
 const ref = { plugin: 'context-bar' } as const
 const snapshot = atom({ ...ref, key: 'snapshot' } as const, null)
 const isOn = atom({ ...ref, key: 'isOn' } as const, true)
+const mode = atom({ ...ref, key: 'mode' } as const, 'auto')
 const theme = atom({ ...ref, key: 'theme' } as const, DEFAULT_THEME)
 
 const GLYPH = { used: '█', buffer: '▒', free: '░', deferred: ' ' } as const
@@ -37,7 +38,7 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'context-bar',
-      description: 'Toggle the stacked context-window bar above the prompt (on | off)',
+      description: 'Toggle the stacked context-window bar above the prompt ; args: mobile | desktop | auto',
     })
     try {
       await update($, theme, () => themeFromOsRelease(''))
@@ -51,7 +52,15 @@ export const register: Register = on => {
     return next(e)
   })
 
-  on('command.run', { command: 'context-bar' }, async $ => {
+  on('command.run', { command: 'context-bar' }, async ($, e) => {
+    const next = nextMode(e.args, await read($, mode))
+    if (next) {
+      await update($, mode, () => next)
+      await update($, isOn, () => true)
+      await refresh($)
+
+      return { text: `Context bar: ${next === 'mobile' ? 'mobile mode on' : next === 'auto' ? 'auto layout (mobile below 57 columns)' : 'desktop layout'}.` }
+    }
     const now = await read($, isOn)
     await update($, isOn, () => !now)
     await refresh($)
@@ -86,11 +95,44 @@ export const register: Register = on => {
 
     const { Box, Text } = $.ui.resolve(e)
     const t = await read($, theme)
+    const mobile = isMobile(await read($, mode), e.props.bodyColumns)
     const width = Math.max(10, e.props.bodyColumns - 4)
     const cells = cellsFor(snap.segments, snap.max, width)
     const hot = snap.percent >= 85
     const used = snap.segments.filter(s => s.kind === 'used')
     const status = e.props.isWorking ? '◉ working' : '◌ idle'
+
+    if (mobile) {
+      const w = Math.max(10, e.props.bodyColumns - 2)
+      const mc = cellsFor(snap.segments, snap.max, w)
+      const top = [...used].sort((a, b) => b.tokens - a.tokens).slice(0, 3)
+
+      return (
+        <Box flexDirection="column">
+          <Box>
+            <Text color={t.accent} bold>◢ CTX </Text>
+            <Text color={hot ? 'error' : t.accent} bold>{Math.round(snap.percent)}%</Text>
+            <Text dimColor> {compact(snap.total)}/{compact(snap.max)} {e.props.isWorking ? '◉' : '◌'}</Text>
+          </Box>
+          <Box>
+            {snap.segments.map((s, i) =>
+              mc[i] > 0 ? (
+                <Text key={s.name} color={s.color} dimColor={s.kind === 'free'}>
+                  {GLYPH[s.kind].repeat(mc[i])}
+                </Text>
+              ) : null,
+            )}
+          </Box>
+          <Box>
+            {top.map(s => (
+              <Text key={s.name} color={s.color}>
+                ■<Text dimColor>{shortName(s.name)} {compact(s.tokens)} </Text>
+              </Text>
+            ))}
+          </Box>
+        </Box>
+      )
+    }
 
     return (
       <Box flexDirection="column" paddingX={1}>
