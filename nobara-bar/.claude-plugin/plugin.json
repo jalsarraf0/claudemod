@@ -1,0 +1,7 @@
+{
+  "name": "nobara-bar",
+  "version": "0.1.0",
+  "description": "Context window as a stacked, per-category bar under the prompt, themed for Nobara Linux",
+  "author": { "name": "jalsarraf0" },
+  "types": "./types/index.d.ts"
+}
