@@ -13,3 +13,5 @@ terminals (short label, stacked bar, percent). By default the
 bar is in `auto` and goes mobile at 56 columns or fewer, so Termius portrait
 needs no setup. `/context-bar desktop` forces the full layout, `/context-bar auto`
 restores width detection, and bare `/context-bar` toggles the bar on and off.
+
+- `prompts/nobara-bar.md` — build spec for the Nobara port (also lives on dominus-nobara at `~/git/claudemod/PROMPT.md`).
