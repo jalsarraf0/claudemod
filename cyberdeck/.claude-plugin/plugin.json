@@ -1,6 +1,6 @@
 {
   "name": "cyberdeck",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Claude Code operations HUD with context, provider-owned agents, MCP enablement, Git/worktree state, responsive layouts, and smart Codex/Grok task routing",
   "author": {
     "name": "jalsarraf0"

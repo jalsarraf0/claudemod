@@ -100,21 +100,25 @@ function schedule($: EngineInterface, kind: 'all' | 'live' | 'agents'): Promise<
 }
 
 /** Dispatch explicit tasks; outputs are returned to Claude, never executed as instructions. */
-async function delegate($: EngineInterface, input: RouteInput): Promise<{ ok: boolean; text: string }> {
-  const generation = sessionGeneration
+async function delegate($: EngineInterface, input: RouteInput, generation: number): Promise<{ ok: boolean; text: string }> {
+  const obsolete = { ok: false, text: 'Task belongs to a previous session; no request was dispatched.' }
+  if (generation !== sessionGeneration) return obsolete
   const decision = chooseRoute(input, await read($, routerReady))
-  if (generation !== sessionGeneration) return { ok: false, text: 'Task belongs to a previous session; no request was dispatched.' }
+  if (generation !== sessionGeneration) return obsolete
   // Reserve after the asynchronous read, with no yield between this check and increment.
   if (routeActive >= 2) return { ok: false, text: 'Two routed tasks are already running. Wait for one to finish.' }
   if (!decision.provider) return { ok: false, text: decision.reason }
   const provider = decision.provider, id = `route-${++routedId}`
   const row: DeckAgent = { id, type: provider === 'codex' ? 'Codex' : 'Grok', name: null, status: 'running', description: clip(input.task, 100) }
   routeActive++
+  let releaseOnExit = true
   let output: { ok: boolean; text: string }
   try {
-    await update($, routedAgents, rows => [...rows.filter(r => r.status === 'running'), ...rows.filter(r => r.status !== 'running').slice(-18), row])
+    await update($, routedAgents, rows => generation === sessionGeneration
+      ? [...rows.filter(r => r.status === 'running'), ...rows.filter(r => r.status !== 'running').slice(-18), row] : rows)
     if (provider === 'codex') {
       const request = codexRequest(`${input.task}${input.context ? `\n\nExplicit context:\n${input.context}` : ''}`, (await $.env.get('CYBERDECK_CODEX_MODEL')) || undefined)
+      if (generation !== sessionGeneration) return obsolete
       const result = await $.process.run(request.argv, { stdin: request.stdin, timeoutMs: request.timeoutMs, cwd: currentCwd || undefined })
       output = result.exitCode === 0 ? parseCodexOutput(result.stdout) : { ok: false, text: 'Codex failed. Check Codex authentication and host logs.' }
     } else {
@@ -122,10 +126,14 @@ async function delegate($: EngineInterface, input: RouteInput): Promise<{ ok: bo
       if (!key) output = { ok: false, text: 'Set XAI_API_KEY on the host to delegate to Grok.' }
       else {
         const request = grokRequest(input.task, input.context, (await $.env.get('CYBERDECK_GROK_MODEL')) || 'grok-4.7', decision.kind === 'research')
+        if (generation !== sessionGeneration) return obsolete
         let timeout: Timer | undefined
         try {
+          // A deadline cannot cancel HTTP. Keep its slot until the actual fetch settles.
+          const pending = $.http.fetch(request.url, { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, body: request.body })
+          releaseOnExit = false
           const response = await Promise.race([
-            $.http.fetch(request.url, { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, body: request.body }),
+            pending.finally(() => { routeActive-- }),
             new Promise<never>((_resolve, reject) => { timeout = $.clock.after(120000, () => reject(new Error('timeout'))) }),
           ])
           output = response.ok ? parseGrokOutput(response.text) : { ok: false, text: `Grok request failed (HTTP ${response.status}). Check the API key, model access and quota.` }
@@ -134,9 +142,11 @@ async function delegate($: EngineInterface, input: RouteInput): Promise<{ ok: bo
     }
   } catch {
     output = { ok: false, text: `${provider === 'codex' ? 'Codex' : 'Grok'} delegation failed or timed out. No automatic retry was sent; the provider may still be processing.` }
-  } finally { routeActive-- }
+  } finally { if (releaseOnExit) routeActive-- }
   if (generation !== sessionGeneration) return { ok: false, text: 'Task belongs to a previous session; its output was discarded.' }
-  await update($, routedAgents, rows => rows.map(r => r.id === id ? { ...r, status: output.ok ? 'completed' : 'failed' } : r))
+  await update($, routedAgents, rows => generation === sessionGeneration
+    ? rows.map(r => r.id === id ? { ...r, status: output.ok ? 'completed' : 'failed' } : r) : rows)
+  if (generation !== sessionGeneration) return { ok: false, text: 'Task belongs to a previous session; its output was discarded.' }
   return { ok: output.ok, text: `Provider: ${provider} (${decision.reason})\n\n${output.text}` }
 }
 
@@ -180,11 +190,12 @@ export const register: Register = on => {
   on('prompt.submit', async ($, e, next) => { const result = await next(e); await schedule($, 'all'); return result })
   on('tool.call', async ($, e, next) => {
     if (e.tool === 'mcp__cyberdeck__route') {
+      const generation = sessionGeneration
       const input = routeInput(e)
       if (!input) return { deny: 'Supply a nonempty task and optional provider/context/kind within the documented limits.' }
       const check = await $.tool.check({ tool: 'mcp__cyberdeck__route', input })
       if (check.decision !== 'allow') return { deny: 'Router tool requires permission. Allow mcp__cyberdeck__route or use /cyberdeck route <auto|codex|grok> <task>.' }
-      const result = await delegate($, input)
+      const result = await delegate($, input, generation)
       return result.ok ? { result: result.text } : { deny: result.text }
     }
     const result = await next(e); await schedule($, 'live'); return result
@@ -193,6 +204,7 @@ export const register: Register = on => {
   on('session.measure', async ($, e, next) => { const result = await next(e); await schedule($, 'live'); return result })
   on('config.set', async ($, e, next) => { const result = await next(e); await schedule($, 'all'); return result })
   on('command.run', async ($, e, next) => {
+    const generation = sessionGeneration
     const requirement = await read($, compatibility)
     if (e.command === PANE && requirement) return { text: requirement }
     if (e.command !== PANE) { const result = await next(e); await schedule($, 'all'); return result }
@@ -200,7 +212,7 @@ export const register: Register = on => {
     if (/^route(?:\s|$)/i.test(rawArgs)) {
       const input = routeCommand(rawArgs)
       if (!input) return { text: 'Use /cyberdeck route <auto|codex|grok> <task>.' }
-      const result = await delegate($, input)
+      const result = await delegate($, input, generation)
       return { text: result.text }
     }
     const arg = rawArgs.toLowerCase()

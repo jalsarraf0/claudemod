@@ -1,4 +1,4 @@
-# Cyberdeck 0.2
+# Cyberdeck 0.2.1
 
 A Claude Code operations HUD with real Codex and Grok task delegation. The pane shows the model/provider, live context usage, agent work, configured MCP enablement, Git branch/dirty state/upstream divergence, and linked worktrees. A status row above the prompt fits desktop and Termius phone widths.
 
@@ -87,6 +87,8 @@ npm test
 
 CI runs the same checks for all three plugins without provider credentials or billable model requests. Hook tests exercise the actual Claude mod runtime with mocked host/provider operations. Pure logic tests cover routing, request builders/parsers, malformed config, rendering widths, provider detection, Git, and response truncation.
 
-The public Anthropic type reference currently predates the state-helper API, so CI type-checks **pure modules and their tests** against a pinned public declaration snapshot. `claude plugin validate` plus native `claude plugin test` cover registration/hooks on the pinned 2.1.296 runtime. For complete hook TypeScript checking, first open the mod in an interactive `--plugin-dir` session, which writes declarations for that engine, then run `npx tsc -p cyberdeck`. Live credentialed provider calls and Termius device rendering need a separate host smoke test.
+The public Anthropic type reference currently predates the state-helper API, so CI type-checks **pure modules and their tests** against a pinned public declaration snapshot. `claude plugin validate` plus native `claude plugin test` cover registration/hooks on the pinned 2.1.296 runtime. For complete hook TypeScript checking, first open the mod in an interactive `--plugin-dir` session, which writes declarations for that engine, then run `./node_modules/.bin/tsc -p cyberdeck`. Live credentialed provider calls and Termius device rendering need a separate host smoke test.
 
 API references: [Claude mods](https://code.claude.com/docs/en/plugins/mods/reference), [Codex non-interactive mode](https://learn.chatgpt.com/docs/non-interactive-mode), [xAI Responses](https://docs.x.ai/developers/model-capabilities/text/generate-text), [xAI web search](https://docs.x.ai/developers/tools/web-search).
+
+See [the 0.2.1 review and host verification report](../docs/cyberdeck-0.2-verification.md) for current results and live-provider limits.
