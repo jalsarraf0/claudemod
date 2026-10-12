@@ -6,6 +6,7 @@ Claude Code mods. Each one is a plugin: load it with `claude --plugin-dir <dir>`
 | --- | --- |
 | [context-bar](context-bar/) | Stacked context-window bar on the bottom row (the hint line under the prompt), one color per `/context` category, themed to the host OS (Fedora blue on Fedora). Built on amarillo. |
 | [nobara-bar](nobara-bar/) | The Nobara port: same idea, Nobara-themed, with a mobile layout for Termius. Built on dominus-nobara. |
+| [cyberdeck](cyberdeck/) | Right-hand HUD pane (MCP on/off, agents, cloud or local model) and a cyberpunk status line. Installed at user scope as `cyberdeck@claudemod`, so `claude` loads it. `/cyberdeck` opens or closes the pane. |
 
 Both register `/context-bar`, so load only one of them in a session.
 

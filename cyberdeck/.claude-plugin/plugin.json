@@ -1,0 +1,7 @@
+{
+  "name": "cyberdeck",
+  "version": "0.1.0",
+  "description": "Cyberpunk makeover for Claude Code: a right-hand HUD pane (MCP servers on/off, what each agent is doing, cloud or local model) and restyled status, prompt and tool rows",
+  "author": { "name": "jalsarraf0" },
+  "types": "./types/index.d.ts"
+}

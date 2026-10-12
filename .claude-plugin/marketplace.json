@@ -1,0 +1,10 @@
+{
+  "name": "claudemod",
+  "owner": { "name": "jalsarraf0" },
+  "plugins": [
+    {
+      "name": "cyberdeck",
+      "source": "./cyberdeck"
+    }
+  ]
+}
