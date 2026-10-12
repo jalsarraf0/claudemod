@@ -12,7 +12,7 @@ export const cellsFor = (segments: Segment[], max: number, width: number): numbe
 
   for (const [, i] of order) {
     if (spare <= 0) break
-    cells[i] += 1
+    cells[i] = (cells[i] ?? 0) + 1
     spare -= 1
   }
   // keep any non-empty used category visible

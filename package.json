@@ -1,0 +1,13 @@
+{
+  "name": "claudemod",
+  "private": true,
+  "scripts": {
+    "test": "claude plugin test cyberdeck && claude plugin test context-bar && claude plugin test nobara-bar",
+    "validate": "claude plugin validate . && claude plugin validate cyberdeck && claude plugin validate context-bar && claude plugin validate nobara-bar",
+    "typecheck": "bash scripts/typecheck.sh"
+  },
+  "devDependencies": {
+    "@anthropic-ai/claude-code": "2.1.296",
+    "typescript": "7.0.2"
+  }
+}

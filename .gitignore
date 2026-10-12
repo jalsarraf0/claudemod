@@ -1,2 +1,5 @@
 cyberdeck/.claude-plugin/types/
 .serena/
+
+node_modules/
+**/.claude-plugin/types/

@@ -1,10 +1,20 @@
 {
   "name": "claudemod",
-  "owner": { "name": "jalsarraf0" },
+  "owner": {
+    "name": "jalsarraf0"
+  },
   "plugins": [
     {
       "name": "cyberdeck",
       "source": "./cyberdeck"
+    },
+    {
+      "name": "context-bar",
+      "source": "./context-bar"
+    },
+    {
+      "name": "nobara-bar",
+      "source": "./nobara-bar"
     }
   ]
 }

@@ -1,7 +1,9 @@
 {
   "name": "cyberdeck",
-  "version": "0.1.0",
-  "description": "Cyberpunk makeover for Claude Code: a right-hand HUD pane (MCP servers on/off, what each agent is doing, cloud or local model) and restyled status, prompt and tool rows",
-  "author": { "name": "jalsarraf0" },
+  "version": "0.2.0",
+  "description": "Claude Code operations HUD with context, provider-owned agents, MCP enablement, Git/worktree state, responsive layouts, and smart Codex/Grok task routing",
+  "author": {
+    "name": "jalsarraf0"
+  },
   "types": "./types/index.d.ts"
 }

@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "es2023", "lib": ["es2023"], "types": [],
+    "module": "esnext", "moduleResolution": "bundler",
+    "strict": true, "noUncheckedIndexedAccess": true,
+    "noEmit": true, "skipLibCheck": true
+  },
+  "include": [
+    "node_modules/.cache/claudemod-types/claude-code.d.ts",
+    "cyberdeck/hooks/lib/**/*.ts", "cyberdeck/tests/git.test.ts", "cyberdeck/tests/codex.test.ts", "cyberdeck/tests/grok.test.ts", "cyberdeck/tests/router.test.ts",
+    "cyberdeck/tests/logic.test.ts", "cyberdeck/tests/upgrade.test.ts",
+    "context-bar/hooks/layout.ts", "context-bar/hooks/theme.ts", "context-bar/hooks/context-bar.test.ts",
+    "nobara-bar/hooks/lib/**/*.ts", "nobara-bar/tests/logic.test.ts", "nobara-bar/tests/layout.test.ts"
+  ]
+}

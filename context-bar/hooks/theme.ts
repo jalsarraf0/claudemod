@@ -17,7 +17,7 @@ export const themeFromOsRelease = (text: string): Theme => {
     text.match(new RegExp(`^${key}=(.*)$`, 'm'))?.[1]?.replace(/^"|"$/g, '') ?? ''
   const ids = [field('ID'), ...field('ID_LIKE').split(/\s+/)].map(s => s.toLowerCase())
   const id = ids.find(one => one in PALETTES)
-  const base = id ? PALETTES[id] : DEFAULT_THEME
+  const base = (id ? PALETTES[id] : undefined) ?? DEFAULT_THEME
   const version = field('VERSION_ID')
   const name = field('NAME') || base.name
 

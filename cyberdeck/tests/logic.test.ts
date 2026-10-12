@@ -11,8 +11,8 @@ describe('whereModelRuns', () => {
   test('a loopback base URL is local', () => {
     expect(whereModelRuns({ baseUrl: 'http://127.0.0.1:1234/v1' })).toEqual({
       kind: 'local',
-      provider: 'local',
-      host: '127.0.0.1',
+      provider: 'local endpoint',
+      host: '127.0.0.1:1234',
     })
   })
   test('Bedrock stays cloud even with a base URL', () => {
@@ -45,8 +45,8 @@ describe('mcp switches', () => {
 
   test('closest project path wins, and commands are dropped', () => {
     expect(mcpSwitchesFromConfig(text, '/home/me/app')).toEqual([
-      { name: 'github', on: false },
-      { name: 'playwright', on: true },
+      { name: 'github', enabled: false },
+      { name: 'playwright', enabled: true },
     ])
   })
   test('a parent project applies under it', () => {
@@ -60,7 +60,7 @@ describe('mcp switches', () => {
 describe('hud', () => {
   test('status line names cloud or local in words', () => {
     expect(statusLine('claude-opus-4-6', { kind: 'cloud', provider: 'Anthropic', host: null }, 1, 2, 1)).toBe(
-      '◈ Opus 4.6 CLOUD · MCP 1/2 · agents 1',
+      '◈ Opus 4.6 CLOUD · Anthropic · CTX ? · MCP 1/2 enabled · AG 1',
     )
   })
   test('pane lists agents and puts off servers first', () => {
@@ -69,14 +69,14 @@ describe('hud', () => {
       where: { kind: 'local', provider: 'local', host: '127.0.0.1' },
       agents: [{ id: 'a', status: 'running', type: 'Explore', description: 'map the hud', name: null }],
       mcp: [
-        { name: 'github', on: false },
-        { name: 'playwright', on: true },
+        { name: 'github', enabled: false },
+        { name: 'playwright', enabled: true },
       ],
       columns: 40,
     })
     const text = lines.map(line => line.map(run => run.text).join('')).join('\n')
     expect(text).toContain('LOCAL')
-    expect(text).toContain('▶ running Explore map the hud')
-    expect(text.indexOf('github off')).toBeLessThan(text.indexOf('playwright on'))
+    expect(text).toContain('▶ Explore map the hud')
+    expect(text.indexOf('github disabled')).toBeLessThan(text.indexOf('playwright enabled'))
   })
 })

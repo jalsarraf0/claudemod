@@ -1,52 +1,35 @@
-/** One configured MCP server and whether this directory has it switched on. */
-export type McpSwitch = { name: string; on: boolean }
+/** Configured enablement only; this is not connection health. */
+export type McpSwitch = { name: string; enabled: boolean }
 
-/**
- * Names from the user `mcpServers` map, marked off when the closest project
- * entry for `cwd` lists them in `disabledMcpServers`. The rest of the file
- * (commands, env, tokens) is dropped.
- */
-export function mcpSwitchesFromConfig(text: string, cwd: string): McpSwitch[] {
-  let data: { mcpServers?: unknown; projects?: unknown }
-  try {
-    data = JSON.parse(text) as { mcpServers?: unknown; projects?: unknown }
-  } catch {
-    return []
-  }
-  const disabled = new Set(disabledForCwd(data.projects, cwd))
-  return serverNames(data.mcpServers)
-    .map(name => ({ name, on: !disabled.has(name) }))
-    .sort((a, b) => Number(a.on) - Number(b.on) || a.name.localeCompare(b.name))
+function record(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
 }
 
-function serverNames(value: unknown): string[] {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) return []
-  return Object.keys(value as Record<string, unknown>).filter(name => name.length > 0)
-}
-
-/** Disabled names from the longest project path that contains `cwd`. */
-export function disabledForCwd(projects: unknown, cwd: string): string[] {
-  if (projects === null || typeof projects !== 'object' || Array.isArray(projects)) return []
+/** Select the closest project; do not inherit sibling or parent project maps. */
+function projectForCwd(projects: unknown, cwd: string): Record<string, unknown> | null {
   let best = ''
-  let names: string[] = []
-  for (const [path, proj] of Object.entries(projects as Record<string, unknown>)) {
-    if (!pathContains(cwd, path) || path.length < best.length) continue
+  let selected: Record<string, unknown> | null = null
+  for (const [path, project] of Object.entries(record(projects) ?? {})) {
+    if (!path || !(cwd === path || cwd.startsWith(path.endsWith('/') ? path : `${path}/`)) || path.length < best.length) continue
     best = path
-    names = stringList(proj, 'disabledMcpServers')
+    selected = record(project)
   }
-  return names
+  return selected
 }
 
-function pathContains(cwd: string, path: string): boolean {
-  if (path === '') return false
-  if (cwd === path) return true
-  const prefix = path.endsWith('/') ? path : `${path}/`
-  return cwd.startsWith(prefix)
+export function disabledForCwd(projects: unknown, cwd: string): string[] {
+  const list = projectForCwd(projects, cwd)?.disabledMcpServers
+  return Array.isArray(list) ? list.filter((item): item is string => typeof item === 'string') : []
 }
 
-function stringList(value: unknown, key: string): string[] {
-  if (value === null || typeof value !== 'object') return []
-  const list = (value as Record<string, unknown>)[key]
-  if (!Array.isArray(list)) return []
-  return list.filter((item): item is string => typeof item === 'string')
+/** Retain names/enablement only; discard commands, arguments, env and tokens. */
+export function mcpSwitchesFromConfig(text: string, cwd: string): McpSwitch[] {
+  let data: Record<string, unknown> | null
+  try { data = record(JSON.parse(text)) } catch { return [] }
+  if (!data) return []
+  const project = projectForCwd(data.projects, cwd)
+  const disabled = new Set(disabledForCwd(data.projects, cwd))
+  const names = new Set([...Object.keys(record(data.mcpServers) ?? {}), ...Object.keys(record(project?.mcpServers) ?? {})])
+  return [...names].filter(Boolean).map(name => ({ name, enabled: !disabled.has(name) }))
+    .sort((a, b) => Number(a.enabled) - Number(b.enabled) || a.name.localeCompare(b.name))
 }
